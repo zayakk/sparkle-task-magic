@@ -13,6 +13,10 @@ export interface Task {
   color: string;
   deadline?: string;
   completed: boolean;
+  points_reward?: number;
+  assigned_by?: string;
+  assigned_to?: string;
+  teacher_comment?: string;
 }
 
 interface TaskCardProps {

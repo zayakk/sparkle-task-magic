@@ -47,32 +47,114 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          created_at: string | null
+          description: string
+          difficulty: string
+          id: string
+          is_active: boolean | null
+          points_reward: number | null
+          time_limit: number | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          difficulty: string
+          id?: string
+          is_active?: boolean | null
+          points_reward?: number | null
+          time_limit?: number | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          difficulty?: string
+          id?: string
+          is_active?: boolean | null
+          points_reward?: number | null
+          time_limit?: number | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          class_name: string | null
           created_at: string | null
+          display_name: string | null
           id: string
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          class_name?: string | null
           created_at?: string | null
+          display_name?: string | null
           id: string
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          class_name?: string | null
           created_at?: string | null
+          display_name?: string | null
           id?: string
           updated_at?: string | null
           username?: string | null
         }
         Relationships: []
       }
+      student_rewards: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          points: number
+          student_id: string
+          task_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          points: number
+          student_id: string
+          task_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          points?: number
+          student_id?: string
+          task_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_rewards_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
+          assigned_by: string | null
+          assigned_to: string | null
           category: string
           color: string
           completed: boolean | null
@@ -80,11 +162,15 @@ export type Database = {
           created_at: string | null
           deadline: string | null
           id: string
+          points_reward: number | null
+          teacher_comment: string | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          assigned_by?: string | null
+          assigned_to?: string | null
           category: string
           color: string
           completed?: boolean | null
@@ -92,11 +178,15 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           id?: string
+          points_reward?: number | null
+          teacher_comment?: string | null
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          assigned_by?: string | null
+          assigned_to?: string | null
           category?: string
           color?: string
           completed?: boolean | null
@@ -104,6 +194,8 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           id?: string
+          points_reward?: number | null
+          teacher_comment?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -138,6 +230,65 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_challenges: {
+        Row: {
+          challenge_id: string
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          score: number | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       user_stats: {
         Row: {
@@ -183,10 +334,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "teacher" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -313,6 +474,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["teacher", "student"],
+    },
   },
 } as const
