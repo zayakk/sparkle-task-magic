@@ -61,7 +61,7 @@ const Auth = () => {
 
           await supabase.from("profiles").update({
             display_name: displayName,
-            class_name: className,
+            class_name: role === "student" ? className : null,
           }).eq("id", data.user.id);
         }
 
@@ -121,16 +121,18 @@ const Auth = () => {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="className">Анги</Label>
-                <Input
-                  id="className"
-                  value={className}
-                  onChange={(e) => setClassName(e.target.value)}
-                  placeholder="Жишээ: 5-А"
-                  required
-                />
-              </div>
+              {role === "student" && (
+                <div>
+                  <Label htmlFor="className">Анги</Label>
+                  <Input
+                    id="className"
+                    value={className}
+                    onChange={(e) => setClassName(e.target.value)}
+                    placeholder="Жишээ: 5-А"
+                    required
+                  />
+                </div>
+              )}
             </>
           )}
 
