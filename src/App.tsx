@@ -19,24 +19,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          const { data } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .single();
-          setUserRole(data?.role || null);
-        } else {
-          setUserRole(null);
-        }
-        setLoading(false);
-      }
-    );
-
+    let cancelled = false;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
       setUser(session?.user ?? null);
       if (session?.user) {
         const { data } = await supabase
@@ -44,19 +29,37 @@ const App = () => {
           .select("role")
           .eq("user_id", session.user.id)
           .single();
-        setUserRole(data?.role || null);
+        if (!cancelled) setUserRole(data?.role || null);
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (cancelled) return;
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
+        if (!cancelled) setUserRole(data?.role || null);
+      } else {
+        setUserRole(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (loading) {
-    return <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-      <div className="text-2xl">Түр хүлээнэ үү...</div>
-    </div>;
-  }
+  // if (loading) {
+  //   return <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+  //   <div className="text-2xl">Түр хүлээнэ үү...</div>
+  //   </div>;
+  // }
 
   return (
     <QueryClientProvider client={queryClient}>

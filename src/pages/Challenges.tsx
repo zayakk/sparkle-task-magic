@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, Clock, Zap, Brain, Target } from "lucide-react";
+import { Trophy, Clock, Zap, Brain, Target, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { MathChallenge } from "@/components/challenges/MathChallenge";
 import { MemoryChallenge } from "@/components/challenges/MemoryChallenge";
@@ -21,6 +22,7 @@ interface Challenge {
 
 const Challenges = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [userPoints, setUserPoints] = useState(0);
@@ -39,13 +41,13 @@ const Challenges = () => {
   };
 
   const loadUserPoints = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
 
     const { data } = await supabase
       .from("user_stats")
       .select("points")
-      .eq("user_id", user.id)
+      .eq("user_id", authUser.id)
       .single();
     if (data) setUserPoints(data.points);
   };
@@ -60,14 +62,14 @@ const Challenges = () => {
   };
 
   const handleChallengeComplete = async (challengeId: string, score: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
 
     const challenge = challenges.find(c => c.id === challengeId);
     if (!challenge) return;
 
     await supabase.from("user_challenges").upsert({
-      user_id: user.id,
+      user_id: authUser.id,
       challenge_id: challengeId,
       completed: true,
       completed_at: new Date().toISOString(),
@@ -78,7 +80,30 @@ const Challenges = () => {
     await supabase
       .from("user_stats")
       .update({ points: newPoints })
-      .eq("user_id", user.id);
+      .eq("user_id", authUser.id);
+
+    // Try to auto-unlock achievements that depend on points/level
+    const { data: stats } = await supabase
+      .from("user_stats")
+      .select("points, level, tasks_completed, current_streak")
+      .eq("user_id", authUser.id)
+      .single();
+    if (stats) {
+      const { data: achievements } = await supabase
+        .from("achievements")
+        .select("id, requirement_type, requirement_value");
+      if (achievements) {
+        for (const a of achievements) {
+          const meets =
+            (a.requirement_type === "tasks_completed" && (stats.tasks_completed || 0) >= a.requirement_value) ||
+            (a.requirement_type === "level" && (stats.level || 1) >= a.requirement_value) ||
+            (a.requirement_type === "current_streak" && (stats.current_streak || 0) >= a.requirement_value);
+          if (meets) {
+            await supabase.from("user_achievements").upsert({ user_id: authUser.id, achievement_id: a.id });
+          }
+        }
+      }
+    }
 
     setUserPoints(newPoints);
     celebrateWin();
@@ -155,9 +180,14 @@ const Challenges = () => {
               <Trophy className="w-8 h-8 text-white animate-float" />
               <h1 className="text-3xl font-bold text-white">Сорилтууд</h1>
             </div>
-            <div className="text-right">
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> Буцах
+              </Button>
+              <div className="text-right">
               <p className="text-white/90 text-sm">Нийт оноо</p>
               <p className="text-white font-bold text-2xl">{userPoints}</p>
+              </div>
             </div>
           </div>
         </div>

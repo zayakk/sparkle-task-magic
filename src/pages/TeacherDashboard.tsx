@@ -25,6 +25,8 @@ interface Task {
   assigned_to: string;
   student_name: string;
   points_reward: number;
+  deadline?: string;
+  completed_at?: string;
 }
 
 const TeacherDashboard = () => {
@@ -42,6 +44,14 @@ const TeacherDashboard = () => {
   useEffect(() => {
     loadStudents();
     loadTasks();
+    const channel = supabase
+      .channel("teacher-tasks-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
+        loadTasks();
+        loadStudents();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const loadStudents = async () => {
@@ -87,6 +97,8 @@ const TeacherDashboard = () => {
         completed,
         assigned_to,
         points_reward,
+        deadline,
+        completed_at,
         profiles!tasks_assigned_to_fkey(display_name)
       `)
       .eq("assigned_by", user.id)
@@ -293,14 +305,28 @@ const TeacherDashboard = () => {
                   <div>
                     <p className="font-semibold">{task.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {task.student_name} • {task.category} • {task.points_reward} оноо
+                      {task.student_name} • {task.category} • {task.points_reward} оноо {task.deadline ? `• Дуусах: ${new Date(task.deadline).toLocaleDateString()}` : ''}
                     </p>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-sm ${
-                    task.completed ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                  }`}>
-                    {task.completed ? "✓ Дууссан" : "⏳ Хүлээгдэж байна"}
-                  </div>
+                  {(() => {
+                    const now = Date.now();
+                    const deadlineTs = task.deadline ? new Date(task.deadline).getTime() : null;
+                    const completedAtTs = task.completed_at ? new Date(task.completed_at).getTime() : null;
+                    const onTime = task.completed && deadlineTs && completedAtTs ? completedAtTs <= deadlineTs : false;
+                    const isLate = !task.completed && deadlineTs ? now > deadlineTs : false;
+                    const badge = task.completed
+                      ? onTime
+                        ? { text: "✓ Цагтаа", cls: "bg-green-100 text-green-700" }
+                        : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
+                      : isLate
+                        ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
+                        : { text: "⏳ Хүлээгдэж", cls: "bg-yellow-100 text-yellow-700" };
+                    return (
+                      <div className={`px-3 py-1 rounded-full text-sm ${badge.cls}`}>
+                        {badge.text}
+                      </div>
+                    );
+                  })()}
                 </div>
               </Card>
             ))}

@@ -84,7 +84,7 @@ const Auth = () => {
       <Card className="w-full max-w-md p-8 shadow-glow-primary">
         <div className="flex items-center justify-center gap-3 mb-6">
           <Sparkles className="w-8 h-8 text-primary animate-sparkle" />
-          <h1 className="text-3xl font-bold text-primary">Даалгаврын Систем</h1>
+          <h1 className="text-3xl font-bold text-primary">TODO</h1>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">

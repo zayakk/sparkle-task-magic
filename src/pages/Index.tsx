@@ -14,37 +14,56 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedColor, setSelectedColor] = useState("all");
 
   useEffect(() => {
-    loadTasks();
-    loadUserStats();
+    // Prime auth session faster than getUser()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const uid = session?.user?.id || null;
+      setUserId(uid);
+      if (uid) {
+        loadTasks();
+        loadUserStats();
+      }
+    });
   }, []);
 
   const loadTasks = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("tasks")
       .select("*")
-      .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+      .or(`user_id.eq.${uid},assigned_to.eq.${uid}`)
       .order("created_at", { ascending: false });
-
-    if (data) setTasks(data);
+    if (error) {
+      // fallback: fetch separate filters in case OR filter fails due to RLS edge case
+      const [own, assigned] = await Promise.all([
+        supabase.from("tasks").select("*").eq("user_id", uid),
+        supabase.from("tasks").select("*").eq("assigned_to", uid),
+      ]);
+      const merged = [...(own.data || []), ...(assigned.data || [])]
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setTasks(merged);
+    } else if (data) {
+      setTasks(data);
+    }
   };
 
   const loadUserStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) return;
 
     const { data } = await supabase
       .from("user_stats")
       .select("points, level")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .single();
 
     if (data) {
@@ -86,19 +105,19 @@ const Index = () => {
     if (!task) return;
 
     const newCompleted = !task.completed;
-    await supabase.from("tasks").update({ completed: newCompleted }).eq("id", id);
+    await supabase.from("tasks").update({ completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null }).eq("id", id);
 
     if (newCompleted) {
       const earnedPoints = task.points_reward || 10;
       const newPoints = points + earnedPoints;
       const newLevel = Math.floor(newPoints / 100) + 1;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       await supabase.from("user_stats").update({ 
         points: newPoints, 
         level: newLevel,
-        tasks_completed: (await supabase.from("tasks").select("id").eq("user_id", user?.id).eq("completed", true)).data?.length || 0
-      }).eq("user_id", user?.id);
+        tasks_completed: (await supabase.from("tasks").select("id").eq("user_id", authUser?.id).eq("completed", true)).data?.length || 0
+      }).eq("user_id", authUser?.id);
 
       setPoints(newPoints);
       if (newLevel > level) {
@@ -108,6 +127,31 @@ const Index = () => {
         toast({ title: `🌟 +${earnedPoints} оноо!`, description: "Сайн ажилласан!" });
       }
       celebrateCompletion();
+
+      // Auto-unlock achievements after completing a task
+      if (authUser) {
+        const { data: stats } = await supabase
+          .from("user_stats")
+          .select("points, level, tasks_completed, current_streak")
+          .eq("user_id", authUser.id)
+          .single();
+        if (stats) {
+          const { data: achievements } = await supabase
+            .from("achievements")
+            .select("id, requirement_type, requirement_value");
+          if (achievements) {
+            for (const a of achievements) {
+              const meets =
+                (a.requirement_type === "tasks_completed" && (stats.tasks_completed || 0) >= a.requirement_value) ||
+                (a.requirement_type === "level" && (stats.level || 1) >= a.requirement_value) ||
+                (a.requirement_type === "current_streak" && (stats.current_streak || 0) >= a.requirement_value);
+              if (meets) {
+                await supabase.from("user_achievements").upsert({ user_id: authUser.id, achievement_id: a.id });
+              }
+            }
+          }
+        }
+      }
     }
 
     loadTasks();
@@ -130,11 +174,65 @@ const Index = () => {
     navigate("/auth");
   };
 
+  useEffect(() => {
+    // Request notification permission once
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    // Schedule simple in-tab reminders for deadlines within 24h
+    const timers: number[] = [];
+    if ("Notification" in window && Notification.permission === "granted") {
+      tasks.forEach((task) => {
+        if (!task.completed && task.deadline) {
+          const deadlineTs = new Date(task.deadline).getTime();
+          const now = Date.now();
+          const remindAt = deadlineTs - 24 * 60 * 60 * 1000; // 24h before
+          const delay = remindAt - now;
+          if (delay > 0 && delay < 24 * 60 * 60 * 1000) {
+            const id = window.setTimeout(() => {
+              new Notification("⏰ Хугацаа дөхөж байна", { body: task.title });
+              toast({ title: "⏰ Хугацаа дөхөж байна", description: task.title });
+            }, delay);
+            timers.push(id);
+          }
+        }
+      });
+    }
+    return () => { timers.forEach(id => clearTimeout(id)); };
+  }, [tasks]);
+
+  // Realtime updates for tasks
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel("tasks-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          const t: any = payload.new || payload.old;
+          if (!t) return;
+          // React only if relevant to current user
+          if (t.user_id === userId || t.assigned_to === userId) {
+            loadTasks();
+            loadUserStats();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
+
   const categories = Array.from(new Set(tasks.map(task => task.category)));
+  const colors = Array.from(new Set(tasks.map(task => task.color)));
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || task.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesColor = selectedColor === "all" || task.color === selectedColor;
+    return matchesSearch && matchesCategory && matchesColor;
   });
 
   const activeTasks = filteredTasks.filter(t => !t.completed);
@@ -181,6 +279,9 @@ const Index = () => {
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
           categories={categories}
+          selectedColor={selectedColor}
+          onColorChange={setSelectedColor}
+          colors={colors}
         />
 
         <div className="space-y-3">

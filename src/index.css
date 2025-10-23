@@ -41,6 +41,7 @@ All colors MUST be HSL.
 
     /* Gradients */
     --gradient-magic: linear-gradient(135deg, hsl(280 81% 76%), hsl(330 81% 85%));
+    /* --gradient-magic: linear-gradient(135deg, hsl(280 81% 76%), hsl(330 81% 85%)); */
     --gradient-subtle: linear-gradient(180deg, hsl(300 100% 98%), hsl(290 100% 96%));
     
     /* Special effects */
@@ -49,6 +50,51 @@ All colors MUST be HSL.
     --shadow-soft: 0 4px 20px hsl(280 40% 80% / 0.2);
     
     /* Animations */
+    --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer base {
+  .dark {
+    /* Dark theme values matching the same tokens */
+    --background: 280 20% 10%;
+    --foreground: 300 20% 96%;
+
+    --card: 280 15% 14%;
+    --card-foreground: 300 20% 96%;
+
+    --popover: 280 15% 14%;
+    --popover-foreground: 300 20% 96%;
+
+    --primary: 280 81% 76%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 330 81% 65%;
+    --secondary-foreground: 300 20% 96%;
+
+    --muted: 280 12% 22%;
+    --muted-foreground: 300 10% 70%;
+
+    --accent: 330 100% 70%;
+    --accent-foreground: 300 20% 96%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 280 12% 24%;
+    --input: 280 12% 24%;
+    --ring: 280 81% 76%;
+
+    --radius: 1rem;
+
+    --gradient-magic: linear-gradient(135deg, hsl(280 30% 20%), hsl(330 30% 24%));
+    --gradient-subtle: linear-gradient(180deg, hsl(280 20% 10%), hsl(280 22% 12%));
+
+    --glow-primary: 0 8px 32px hsl(280 81% 76% / 0.2);
+    --glow-accent: 0 8px 24px hsl(330 100% 70% / 0.25);
+    --shadow-soft: 0 4px 20px hsl(280 40% 20% / 0.35);
+
     --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   }

@@ -43,7 +43,7 @@ export const AddTaskForm = ({ onAdd }: AddTaskFormProps) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
-            placeholder="✨ Add a new magical task..."
+            placeholder="✨ ..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="flex-1 text-base border-2 focus-visible:ring-primary"
@@ -82,9 +82,10 @@ export const AddTaskForm = ({ onAdd }: AddTaskFormProps) => {
           <Button 
             type="submit" 
             className="bg-gradient-magic hover:shadow-glow-primary transition-all duration-300 font-semibold"
+            // className="bg-gradient-magic hover:shadow-glow-primary transition-all duration-300 font-semibold"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Add Task
+            Add Tasksssss
           </Button>
         </div>
       </form>
