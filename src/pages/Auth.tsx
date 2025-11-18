@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false);``
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -30,27 +30,33 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password,
         });
+
         if (error) throw error;
+
         toast({ title: "Амжилттай нэвтэрлээ!" });
         navigate("/");
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.toLowerCase(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
             data: {
               display_name: displayName,
               class_name: className,
+              role: role, // metadata дотор role хадгална
             },
           },
         });
+
+
         if (error) throw error;
 
         if (data.user) {
@@ -59,19 +65,26 @@ const Auth = () => {
             role: role,
           });
 
-          await supabase.from("profiles").update({
-            display_name: displayName,
-            class_name: role === "student" ? className : null,
-          }).eq("id", data.user.id);
+          await supabase
+            .from("profiles")
+            .update({
+              display_name: displayName,
+              class_name: role === "student" ? className : null,
+            })
+            .eq("id", data.user.id);
         }
 
-        toast({ title: "Бүртгэл амжилттай!", description: "Та одоо нэвтэрч болно." });
+        toast({
+          title: "Бүртгэл амжилттай!",
+          description: "Та одоо нэвтэрч болно.",
+        });
+
         setIsLogin(true);
       }
     } catch (error: any) {
       toast({
         title: "Алдаа гарлаа",
-        description: error.message,
+        description: error.message || "Таньд нэвтрэхэд алдаа гарлаа.",
         variant: "destructive",
       });
     } finally {
@@ -92,17 +105,29 @@ const Auth = () => {
             <>
               <div>
                 <Label htmlFor="role">Төрөл</Label>
-                <RadioGroup value={role} onValueChange={(value: "teacher" | "student") => setRole(value)} className="flex gap-4 mt-2">
+                <RadioGroup
+                  value={role}
+                  onValueChange={(value: "teacher" | "student") =>
+                    setRole(value)
+                  }
+                  className="flex gap-4 mt-2"
+                >
                   <div className="flex items-center space-x-2 flex-1">
                     <RadioGroupItem value="student" id="student" />
-                    <Label htmlFor="student" className="flex items-center gap-2 cursor-pointer">
+                    <Label
+                      htmlFor="student"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                       <BookOpen className="w-4 h-4" />
                       Суралцагч
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 flex-1">
                     <RadioGroupItem value="teacher" id="teacher" />
-                    <Label htmlFor="teacher" className="flex items-center gap-2 cursor-pointer">
+                    <Label
+                      htmlFor="teacher"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                       <GraduationCap className="w-4 h-4" />
                       Багш
                     </Label>
@@ -161,7 +186,11 @@ const Auth = () => {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Түр хүлээнэ үү..." : isLogin ? "Нэвтрэх" : "Бүртгүүлэх"}
+            {loading
+              ? "Түр хүлээнэ үү..."
+              : isLogin
+              ? "Нэвтрэх"
+              : "Бүртгүүлэх"}
           </Button>
         </form>
 
@@ -170,7 +199,9 @@ const Auth = () => {
             onClick={() => setIsLogin(!isLogin)}
             className="text-primary hover:underline text-sm"
           >
-            {isLogin ? "Шинэ хэрэглэгч үү? Бүртгүүлэх" : "Бүртгэлтэй юу? Нэвтрэх"}
+            {isLogin
+              ? "Шинэ хэрэглэгч үү? Бүртгүүлэх"
+              : "Бүртгэлтэй юу? Нэвтрэх"}
           </button>
         </div>
       </Card>

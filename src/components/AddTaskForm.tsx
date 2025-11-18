@@ -43,14 +43,14 @@ export const AddTaskForm = ({ onAdd }: AddTaskFormProps) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
-            placeholder="✨ ..."
+            placeholder="✨ Task name..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="flex-1 text-base border-2 focus-visible:ring-primary"
           />
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-full sm:w-40 border-2">
-              <SelectValue />
+              <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
               {categories.map((cat) => (
@@ -82,10 +82,9 @@ export const AddTaskForm = ({ onAdd }: AddTaskFormProps) => {
           <Button 
             type="submit" 
             className="bg-gradient-magic hover:shadow-glow-primary transition-all duration-300 font-semibold"
-            // className="bg-gradient-magic hover:shadow-glow-primary transition-all duration-300 font-semibold"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Add Tasksssss
+            Add Task
           </Button>
         </div>
       </form>

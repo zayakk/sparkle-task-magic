@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { GraduationCap, Plus, Trophy, Users } from "lucide-react";
+import { GraduationCap, LogOut, Plus, Trophy, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,7 @@ interface Task {
 
 const TeacherDashboard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedStudent, setSelectedStudent] = useState("");
@@ -174,6 +176,10 @@ const TeacherDashboard = () => {
       loadStudents();
     }
   };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-4 md:p-8">
@@ -183,6 +189,10 @@ const TeacherDashboard = () => {
             <GraduationCap className="w-8 h-8 text-white" />
             <h1 className="text-3xl font-bold text-white">Багшийн Хяналтын Самбар</h1>
           </div>
+          <Button onClick={handleLogout} variant="outline">
+            <LogOut className="w-4 h-4 mr-2" />
+            Гарах
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
