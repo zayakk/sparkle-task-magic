@@ -59,34 +59,48 @@ const TeacherDashboard = () => {
   }, []);
 
   const loadStudents = async () => {
-    const { data: rolesData } = await supabase
+  try {
+    // student role-тай user_id-үүдийг авч ирнэ
+    const { data: rolesData, error: rolesError } = await supabase
       .from("user_roles")
       .select("user_id")
       .eq("role", "student");
-
-    if (rolesData) {
-      const userIds = rolesData.map(r => r.user_id);
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, username, class_name")
-        .in("id", userIds);
-
-      const { data: statsData } = await supabase
-        .from("user_stats")
-        .select("user_id, points")
-        .in("user_id", userIds);
-
-      if (profilesData && statsData) {
-        const studentsWithPoints = profilesData.map(profile => ({
-          id: profile.id,
-          username: profile.username || "Нэргүй",
-          class_name: profile.class_name || "",
-          points: statsData.find(s => s.user_id === profile.id)?.points || 0,
-        }));
-        setStudents(studentsWithPoints);
-      }
+    if (rolesError) throw rolesError;
+    if (!rolesData || rolesData.length === 0) {
+      setStudents([]);
+      return;
     }
-  };
+
+    const userIds = rolesData.map(r => r.user_id);
+
+    // profiles-г userIds ашиглаж татна
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, username, class_name")
+      .in("id", userIds);
+    if (profilesError) throw profilesError;
+
+    // user_stats-г авч, points-ийг нэмнэ
+    const { data: statsData, error: statsError } = await supabase
+      .from("user_stats")
+      .select("user_id, points")
+      .in("user_id", userIds);
+    if (statsError) throw statsError;
+
+    const studentsWithPoints = profilesData.map(profile => ({
+      id: profile.id,
+      username: profile.username || "Нэргүй",
+      class_name: profile.class_name || "",
+      points: statsData.find(s => s.user_id === profile.id)?.points || 0,
+    }));
+
+    console.log("Loaded students:", studentsWithPoints);
+    setStudents(studentsWithPoints);
+  } catch (err) {
+    console.error("Error loading students:", err);
+  }
+};
+
 
   const loadTasks = async () => {
   try {
@@ -142,6 +156,9 @@ const TeacherDashboard = () => {
     if (!user) return;
 
     const { error } = await supabase.from("tasks").insert({
+
+  // teacher_id: authUser.id,
+  // student_id: studentId,
       title: newTaskTitle,
       category: newTaskCategory || "Ерөнхий",
       color: "#9b87f5",
