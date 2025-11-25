@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { GraduationCap, LogOut, Plus, Trophy, Users } from "lucide-react";
+import { GraduationCap, LogOut, Moon, Plus, Sun, Trophy, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 interface Student {
   id: string;
-  display_name: string;
+  username: string;
   class_name: string;
   points: number;
 }
@@ -43,6 +43,8 @@ const TeacherDashboard = () => {
   const [rewardComment, setRewardComment] = useState("");
   const [loading, setLoading] = useState(false);
 
+
+
   useEffect(() => {
     loadStudents();
     loadTasks();
@@ -66,7 +68,7 @@ const TeacherDashboard = () => {
       const userIds = rolesData.map(r => r.user_id);
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, display_name, class_name")
+        .select("id, username, class_name")
         .in("id", userIds);
 
       const { data: statsData } = await supabase
@@ -77,7 +79,7 @@ const TeacherDashboard = () => {
       if (profilesData && statsData) {
         const studentsWithPoints = profilesData.map(profile => ({
           id: profile.id,
-          display_name: profile.display_name || "Нэргүй",
+          username: profile.username || "Нэргүй",
           class_name: profile.class_name || "",
           points: statsData.find(s => s.user_id === profile.id)?.points || 0,
         }));
@@ -87,33 +89,47 @@ const TeacherDashboard = () => {
   };
 
   const loadTasks = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    // tasks-г авч ирнэ
+    const { data: tasksData, error } = await supabase
       .from("tasks")
       .select(`
         id,
         title,
         category,
         completed,
-        assigned_to,
+        student_id,
         points_reward,
         deadline,
         completed_at,
-        profiles!tasks_assigned_to_fkey(display_name)
+        profiles!tasks_student_id_fkey(username)
       `)
       .eq("assigned_by", user.id)
       .order("created_at", { ascending: false });
 
-    if (data) {
-      const formattedTasks = data.map(task => ({
+    if (error) {
+      console.error("Load tasks error:", error);
+      return; 
+    }
+
+    if (tasksData) {
+      const formattedTasks = tasksData.map((task: any) => ({
         ...task,
-        student_name: (task.profiles as any)?.display_name || "Нэргүй",
+        student_name: task.profiles?.username || "Нэргүй",
       }));
       setTasks(formattedTasks);
     }
-  };
+  } catch (err) {
+    console.error("Unexpected error in loadTasks:", err);
+  }
+};
+
 
   const assignTask = async () => {
     if (!selectedStudent || !newTaskTitle) {
@@ -176,9 +192,24 @@ const TeacherDashboard = () => {
       loadStudents();
     }
   };
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    const preferDark = saved ? saved === "dark" : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (preferDark) {
+      document.documentElement.classList.add("dark");
+      setIsDark(true);
+    }
+  }, []);
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
+  };
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   return (
@@ -189,6 +220,9 @@ const TeacherDashboard = () => {
             <GraduationCap className="w-8 h-8 text-white" />
             <h1 className="text-3xl font-bold text-white">Багшийн Хяналтын Самбар</h1>
           </div>
+          <Button size="icon" variant="secondary" onClick={toggleTheme} className="rounded-full">
+            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </Button> 
           <Button onClick={handleLogout} variant="outline">
             <LogOut className="w-4 h-4 mr-2" />
             Гарах
@@ -206,7 +240,7 @@ const TeacherDashboard = () => {
                 <Card key={student.id} className="p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-semibold">{student.display_name}</p>
+                      <p className="font-semibold">{student.username}</p>
                       <p className="text-sm text-muted-foreground">{student.class_name}</p>
                     </div>
                     <div className="text-right">
@@ -220,7 +254,7 @@ const TeacherDashboard = () => {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Шагнал өгөх - {student.display_name}</DialogTitle>
+                            <DialogTitle>Шагнал өгөх - {student.username}</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
                             <div>
@@ -268,7 +302,7 @@ const TeacherDashboard = () => {
                   <SelectContent>
                     {students.map((student) => (
                       <SelectItem key={student.id} value={student.id}>
-                        {student.display_name} - {student.class_name}
+                        {student.username} - {student.class_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
