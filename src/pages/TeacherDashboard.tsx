@@ -92,7 +92,7 @@ const TeacherDashboard = () => {
       username: profile.username || "Нэргүй",
       class_name: profile.class_name || "",
       points: statsData.find(s => s.user_id === profile.id)?.points || 0,
-    }));
+    })); 
 
     console.log("Loaded students:", studentsWithPoints);
     setStudents(studentsWithPoints);
