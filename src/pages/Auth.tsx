@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, GraduationCap, BookOpen } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import AppleLoginButton from "./AppleLoginButton";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -135,6 +136,36 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+
+function handleGoogleLogin(event: MouseEvent<HTMLButtonElement>) {
+  event.preventDefault();
+  setLoading(true);
+
+  supabase.auth
+    .signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin, // Нэвтрээд буцах URL
+      },
+    })
+    .then(({ data, error }) => {
+      if (error) {
+        toast({
+          title: "Алдаа гарлаа",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Амжилттай нэвтэрлээ",
+          description: "Google аккаунтаар нэвтэрлээ",
+        });
+      }
+    })
+    .finally(() => setLoading(false));
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
@@ -268,6 +299,9 @@ const Auth = () => {
 
         {!isForgotPassword && (
           <div className="mt-4 text-center">
+      <button onClick={handleGoogleLogin} className="text-primary hover:underline text-sm mb-2">
+  Login with Google
+</button><br />
             <button
               onClick={() => setIsLogin(!isLogin)}
               className="text-primary hover:underline text-sm"
@@ -277,6 +311,7 @@ const Auth = () => {
           </div>
         )}
       </Card>
+
     </div>
   );
 };

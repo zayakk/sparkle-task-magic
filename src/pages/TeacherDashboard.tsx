@@ -43,8 +43,7 @@ const TeacherDashboard = () => {
   const [rewardPoints, setRewardPoints] = useState(10);
   const [rewardComment, setRewardComment] = useState("");
   const [loading, setLoading] = useState(false);
-
-
+  const [newTaskDeadline, setNewTaskDeadline] = useState("");
 
   useEffect(() => {
     loadStudents();
@@ -66,7 +65,7 @@ const TeacherDashboard = () => {
       .from("profiles")
       .select("*")
       .eq("is_teacher", false);
-      console.log("rolesData", profilesData[0]) 
+      // console.log("rolesData", profilesData[0]) 
     if (profilesError) throw profilesError;
     if (!profilesData || profilesData.length === 0) {
       setStudents([]);
@@ -85,12 +84,12 @@ const TeacherDashboard = () => {
 
     const studentsWithPoints = profilesData.map(profile => ({
       id: profile.id,
-      username: profile.username || "Нэргүй",
+      username: profile.username || "Нэргүйй",
       class_name: profile.class_name || "",
       points: statsData.find(s => s.user_id === profile.id)?.points || 0,
     })); 
 
-    console.log("Loaded students:", studentsWithPoints);
+    // console.log("Loaded students:", studentsWithPoints);
     setStudents(studentsWithPoints);
   } catch (err) {
     console.error("Error loading students:", err);
@@ -108,7 +107,7 @@ const TeacherDashboard = () => {
       .select("*") // бүх багануудыг авна
       .eq("assigned_by", user.id)
       .order("created_at", { ascending: false });
-
+      console.log("tasksData", user.id, tasksData);
     if (error) {
       console.error("Load tasks error:", error);
       return; 
@@ -122,13 +121,14 @@ const TeacherDashboard = () => {
       }));
 
       setTasks(formattedTasks);
+      console.log("Loaded tasks:", formattedTasks);
     }
   } catch (err) {
     console.error("Unexpected error in loadTasks:", err);
   }
 };
 
-  const assignTask = async () => {
+const assignTask = async () => {
   if (!selectedStudent || !newTaskTitle) {
     toast({
       title: "Алдаа",
@@ -139,30 +139,50 @@ const TeacherDashboard = () => {
   }
 
   setLoading(true);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Хэрэглэгч олдсонгүй");
 
-  const { error } = await supabase.from("tasks").insert({
-    title: newTaskTitle,
-    category: newTaskCategory || "Ерөнхий",
-    color: "#9b87f5",
-    // student_id: selectedStudent,      // ✔ зөв
-    // assigned_by: user.id,             // ✔ багш
-    points_reward: newTaskPoints,
-    completed: false,
-  });
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert([
+        {
+          title: newTaskTitle,
+          category: newTaskCategory,
+          points_reward: newTaskPoints,
+          assigned_to: selectedStudent,
+          assigned_by: user.id,
+          deadline: newTaskDeadline || null,
+        },
+      ]);
 
-  if (error) {
-    toast({ title: "Алдаа", description: error.message, variant: "destructive" });
-  } else {
-    toast({ title: "Амжилттай!", description: "Даалгавар өгөгдлөө" });
+    if (error) {
+      console.error("Error inserting task:", error);
+      toast({
+        title: "Алдаа гарлаа",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Амжилттай",
+      description: "Даалгавар амжилттай үүсгэлээ",
+    });
+
     setNewTaskTitle("");
     setNewTaskCategory("");
+    setNewTaskPoints(10);
+    setNewTaskDeadline("");
     setSelectedStudent("");
     loadTasks();
+  } finally {
+    setLoading(false);
   }
-  setLoading(false);
 };
+
+
 
 
   const giveReward = async (studentId: string) => {
@@ -221,6 +241,7 @@ const TeacherDashboard = () => {
             <GraduationCap className="w-8 h-8 text-white" />
             <h1 className="text-3xl font-bold text-white">Багшийн Хяналтын Самбар</h1>
           </div>
+          <div className="flex items-center gap-3">
           <Button size="icon" variant="secondary" onClick={toggleTheme} className="rounded-full">
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </Button> 
@@ -228,6 +249,7 @@ const TeacherDashboard = () => {
             <LogOut className="w-4 h-4 mr-2" />
             Гарах
           </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -248,10 +270,10 @@ const TeacherDashboard = () => {
                       <p className="font-bold text-primary">{student.points} оноо</p>
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="mt-2">
+                          {/* <Button size="sm" variant="outline" className="mt-2">
                             <Trophy className="w-4 h-4 mr-1" />
                             Шагнах
-                          </Button>
+                          </Button> */}
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
@@ -289,57 +311,66 @@ const TeacherDashboard = () => {
           </Card>
 
           <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Plus className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-bold">Шинэ Даалгавар Өгөх</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <Label>Суралцагч сонгох</Label>
-                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+  <div className="flex items-center gap-3 mb-4">
+    <Plus className="w-6 h-6 text-primary" />
+    <h2 className="text-xl font-bold">Шинэ Даалгавар Өгөх</h2>
+  </div>
+  <div className="space-y-4">
+    <div>
+      <Label>Суралцагч сонгох</Label>
+      <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+        <SelectTrigger>
+          <SelectValue placeholder="Суралцагч сонгоно уу" />
+        </SelectTrigger>
+        <SelectContent>
+          {students.map((student) => (
+            <SelectItem key={student.id} value={student.id}>
+              {student.username} - {student.class_name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+    <div>
+      <Label>Даалгаврын нэр</Label>
+      <Input
+        value={newTaskTitle}
+        onChange={(e) => setNewTaskTitle(e.target.value)}
+        placeholder="Математик хичээл хийх"
+      />
+    </div>
+    <div>
+      <Label>Ангилал</Label>
+      <Input
+        value={newTaskCategory}
+        onChange={(e) => setNewTaskCategory(e.target.value)}
+        placeholder="Математик"
+      />
+    </div>
+    <div>
+      <Label>Оноо</Label>
+      <Input
+        type="number"
+        value={newTaskPoints}
+        onChange={(e) => setNewTaskPoints(parseInt(e.target.value))}
+        min="1"
+      />
+    </div>
+    <div>
+  <Label>Дуусах хугацаа</Label>
+  <Input
+    type="date"
+    value={newTaskDeadline}
+    onChange={(e) => setNewTaskDeadline(e.target.value)}
+  />
+</div>
 
-                  <SelectTrigger>
-                    <SelectValue placeholder="Суралцагч сонгоно уу" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.username} - {student.class_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Даалгаврын нэр</Label>
-                <Input
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="Математик хичээл хийх"
-                  />
-              </div>
-              <div>
-                <Label>Ангилал</Label>
-                <Input
-                  value={newTaskCategory}
-                  onChange={(e) => setNewTaskCategory(e.target.value)}
-                  placeholder="Математик"
-                  />
-              </div>
-              <div>
-                <Label>Оноо</Label>
-                <Input
-                  type="number"
-                  value={newTaskPoints}
-                  onChange={(e) => setNewTaskPoints(parseInt(e.target.value))}
-                  min="1"
-                  />
-              </div>
-              <Button onClick={assignTask} disabled={loading} className="w-full">
-                {loading ? "Түр хүлээнэ үү..." : "Даалгавар өгөх"}
-              </Button>
-            </div>
-          </Card>
+    <Button onClick={assignTask} disabled={loading} className="w-full">
+      {loading ? "Түр хүлээнэ үү..." : "Даалгавар өгөх"}
+    </Button>
+  </div>
+</Card>
+
         </div>
 
         <Card className="p-6">

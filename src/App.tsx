@@ -75,7 +75,7 @@ const App = () => {
     );
   }
 
-  console.log("Current user:", user);
+  // console.log("Current user:", user);
   // console.log("User role:", userRole);
 
   return (
