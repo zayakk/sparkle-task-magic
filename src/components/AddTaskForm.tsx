@@ -39,7 +39,7 @@ export const AddTaskForm = ({ onAdd }: AddTaskFormProps) => {
   };
 
   return (
-    <Card className="p-6 mb-6 bg-card shadow-soft border-2 border-border animate-slide-up">
+    <Card className="p-6 mb-6 bg-card shadow-soft border-2 border-border animate-slide-up max-w-6xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <Input

@@ -266,7 +266,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex gap-2 mb-4 justify-end">
           <Button onClick={() => navigate("/challenges")} variant="outline">
             <Zap className="w-4 h-4 mr-2" />
@@ -279,33 +279,37 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
         </div>
 
         <Header points={points} level={level} />
-        
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-accent/30 animate-slide-up">
-              <div className="flex items-center gap-3 mb-2">
-                <Target className="w-6 h-6 text-accent animate-float" />
-                <h3 className="font-bold text-lg">Багшийн даалгавар</h3>
-              </div>
-              <p className="text-3xl font-bold text-accent">{teacherAssignedTasks.length}</p>
-            </div>
 
-            <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-primary/20 animate-slide-up">
-              <div className="flex items-center gap-3 mb-2">
-                <Target className="w-6 h-6 text-primary animate-float" />
-                <h3 className="font-bold text-lg">Идэвхтэй</h3>
-              </div>
-              <p className="text-3xl font-bold text-primary">{personalTasks.length}</p>
-            </div>
+        {/* ✅ 3-н карт нэг мөрөнд */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
-            <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-secondary/20 animate-slide-up">
-              <div className="flex items-center gap-3 mb-2">
-                <Trophy className="w-6 h-6 text-secondary animate-float" />
-                <h3 className="font-bold text-lg">Дууссан</h3>
-              </div>
-              <p className="text-3xl font-bold text-secondary">{completedTasks.length}</p>
+          <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-accent/30 animate-slide-up">
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="w-6 h-6 text-accent animate-float" />
+              <h3 className="font-bold text-lg">Багшийн даалгавар</h3>
             </div>
+            <p className="text-3xl font-bold text-accent">{teacherAssignedTasks.length}</p>
           </div>
+
+          <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-primary/20 animate-slide-up">
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="w-6 h-6 text-primary animate-float" />
+              <h3 className="font-bold text-lg">Идэвхтэй</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{personalTasks.length}</p>
           </div>
+
+          <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-secondary/20 animate-slide-up">
+            <div className="flex items-center gap-3 mb-2">
+              <Trophy className="w-6 h-6 text-secondary animate-float" />
+              <h3 className="font-bold text-lg">Дууссан</h3>
+            </div>
+            <p className="text-3xl font-bold text-secondary">{completedTasks.length}</p>
+          </div>
+
+        </div>
+      </div>
+
 
 
         <AddTaskForm onAdd={addTask} />
@@ -320,8 +324,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
           colors={colors}
         />
 
-        <div className="space-y-6">
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-6xl mx-auto mt-6">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-12 animate-slide-up">
               <p className="text-2xl mb-2">✨</p>
@@ -391,7 +394,6 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
             </>
           )}
         </div>
-      </div>
     </div>
   );
   

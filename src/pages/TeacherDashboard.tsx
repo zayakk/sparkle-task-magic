@@ -44,7 +44,6 @@ const TeacherDashboard = () => {
   const [rewardComment, setRewardComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [newTaskDeadline, setNewTaskDeadline] = useState("");
-
   useEffect(() => {
     loadStudents();
     loadTasks();
@@ -72,12 +71,12 @@ const TeacherDashboard = () => {
     }
 
     const studentIds = rolesData.map(r => r.user_id);
-
+    console.log("Student IDs:", studentIds);
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
       .select("*")
       .eq("is_teacher", false);
-      // console.log("rolesData", profilesData[0]) 
+      console.log("rolesData", profilesData[0]) 
     if (profilesError) throw profilesError;
 
     const { data: statsData, error: statsError } = await supabase
@@ -316,65 +315,65 @@ const assignTask = async () => {
           </Card>
 
           <Card className="p-6">
-  <div className="flex items-center gap-3 mb-4">
-    <Plus className="w-6 h-6 text-primary" />
-    <h2 className="text-xl font-bold">Шинэ Даалгавар Өгөх</h2>
-  </div>
-  <div className="space-y-4">
-    <div>
-      <Label>Суралцагч сонгох</Label>
-      <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-        <SelectTrigger>
-          <SelectValue placeholder="Суралцагч сонгоно уу" />
-        </SelectTrigger>
-        <SelectContent>
-          {students.map((student) => (
-            <SelectItem key={student.id} value={student.id}>
-              {student.username} - {student.class_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-    <div>
-      <Label>Даалгаврын нэр</Label>
-      <Input
-        value={newTaskTitle}
-        onChange={(e) => setNewTaskTitle(e.target.value)}
-        placeholder="Математик хичээл хийх"
-      />
-    </div>
-    <div>
-      <Label>Ангилал</Label>
-      <Input
-        value={newTaskCategory}
-        onChange={(e) => setNewTaskCategory(e.target.value)}
-        placeholder="Математик"
-      />
-    </div>
-    <div>
-      <Label>Оноо</Label>
-      <Input
-        type="number"
-        value={newTaskPoints}
-        onChange={(e) => setNewTaskPoints(parseInt(e.target.value))}
-        min="1"
-      />
-    </div>
-    <div>
-  <Label>Дуусах хугацаа</Label>
-  <Input
-    type="date"
-    value={newTaskDeadline}
-    onChange={(e) => setNewTaskDeadline(e.target.value)}
-  />
-</div>
+            <div className="flex items-center gap-3 mb-4">
+              <Plus className="w-6 h-6 text-primary" />
+              <h2 className="text-xl font-bold">Шинэ Даалгавар Өгөх</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label>Суралцагч сонгох</Label>
+                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Суралцагч сонгоно уу" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {students.map((student) => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.username} - {student.class_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Даалгаврын нэр</Label>
+                <Input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Математик хичээл хийх"
+                />
+              </div>
+              <div>
+                <Label>Ангилал</Label>
+                <Input
+                  value={newTaskCategory}
+                  onChange={(e) => setNewTaskCategory(e.target.value)}
+                  placeholder="Математик"
+                />
+              </div>
+              <div>
+                <Label>Оноо</Label>
+                <Input
+                  type="number"
+                  value={newTaskPoints}
+                  onChange={(e) => setNewTaskPoints(parseInt(e.target.value))}
+                  min="1"
+                />
+              </div>
+              <div>
+                <Label>Дуусах хугацаа</Label>
+                <Input
+                  type="date"
+                  value={newTaskDeadline}
+                  onChange={(e) => setNewTaskDeadline(e.target.value)}
+                />
+              </div>
 
-    <Button onClick={assignTask} disabled={loading} className="w-full">
-      {loading ? "Түр хүлээнэ үү..." : "Даалгавар өгөх"}
-    </Button>
-  </div>
-</Card>
+              <Button onClick={assignTask} disabled={loading} className="w-full">
+                {loading ? "Түр хүлээнэ үү..." : "Даалгавар өгөх"}
+              </Button>
+            </div>
+          </Card>
 
         </div>
 
@@ -402,7 +401,7 @@ const assignTask = async () => {
                     : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
                     : isLate
                     ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
-                    : { text: "⏳ Хүлээгдэж", cls: "bg-yellow-100 text-yellow-700" };
+                    : { text: "⏳ Хүлээгдэж байна", cls: "bg-yellow-100 text-yellow-700" };
                     return (
                       <div className={`px-3 py-1 rounded-full text-sm ${badge.cls}`}>
                         {badge.text}
