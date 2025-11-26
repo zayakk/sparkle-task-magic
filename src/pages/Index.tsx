@@ -262,6 +262,8 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
 
   const teacherAssignedTasks = filteredTasks.filter(t => !t.completed && t.assigned_by && t.assigned_by !== userId);
   const personalTasks = filteredTasks.filter(t => !t.completed && (!t.assigned_by || t.assigned_by === userId));
+  const teacherAssignedTasks = filteredTasks.filter(t => !t.completed && t.assigned_by && t.assigned_by !== userId);
+  const personalTasks = filteredTasks.filter(t => !t.completed && (!t.assigned_by || t.assigned_by === userId));
   const completedTasks = filteredTasks.filter(t => t.completed);
 
   return (
@@ -319,6 +321,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
           colors={colors}
         />
 
+        <div className="space-y-6">
         <div className="space-y-6">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-12 animate-slide-up">
@@ -385,6 +388,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
                     </div>
                   ))}
                 </div>
+              )}
               )}
             </>
           )}

@@ -60,34 +60,39 @@ const TeacherDashboard = () => {
 
   const loadStudents = async () => {
   try {
-    // student role-тай user_id-үүдийг авч ирнэ
+    const { data: rolesData, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "student");
+
+    if (rolesError) throw rolesError;
+    if (!rolesData || rolesData.length === 0) {
+      setStudents([]);
+      return;
+    }
+
+    const studentIds = rolesData.map(r => r.user_id);
+
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
       .select("*")
       .eq("is_teacher", false);
       // console.log("rolesData", profilesData[0]) 
     if (profilesError) throw profilesError;
-    if (!profilesData || profilesData.length === 0) {
-      setStudents([]);
-      return;
-    }
 
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("*");
-      // console.log("statsData", statsData[0]) 
-    if (statsError) throw statsError;
-    if (!statsData || statsData.length === 0) {
-      setStudents([]);
-      return;
-    }
+      .select("*")
+      .in("user_id", studentIds);
 
-    const studentsWithPoints = profilesData.map(profile => ({
+    if (statsError) throw statsError;
+
+    const studentsWithPoints = profilesData?.map(profile => ({
       id: profile.id,
       username: profile.username || "Нэргүйй",
       class_name: profile.class_name || "",
-      points: statsData.find(s => s.user_id === profile.id)?.points || 0,
-    })); 
+      points: statsData?.find(s => s.user_id === profile.id)?.points || 0,
+    })) || [];
 
     // console.log("Loaded students:", studentsWithPoints);
     setStudents(studentsWithPoints);
