@@ -59,30 +59,18 @@ const TeacherDashboard = () => {
 
   const loadStudents = async () => {
   try {
-    const { data: rolesData, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "student");
-
-    if (rolesError) throw rolesError;
-    if (!rolesData || rolesData.length === 0) {
-      setStudents([]);
-      return;
-    }
-
-    const studentIds = rolesData.map(r => r.user_id);
-    console.log("Student IDs:", studentIds);
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
       .select("*")
       .eq("is_teacher", false);
-      console.log("rolesData", profilesData[0]) 
+    // console.log("profilesData", profilesData); 
     if (profilesError) throw profilesError;
 
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("*")
-      .in("user_id", studentIds);
+      .select("*");
+
+    // console.log("statsData", statsData); 
 
     if (statsError) throw statsError;
 
@@ -90,7 +78,7 @@ const TeacherDashboard = () => {
       id: profile.id,
       username: profile.username || "Нэргүйй",
       class_name: profile.class_name || "",
-      points: statsData?.find(s => s.user_id === profile.id)?.points || 0,
+      points: statsData?.find(s => s.user_id == profile.id)?.points || 0,
     })) || [];
 
     // console.log("Loaded students:", studentsWithPoints);
@@ -111,7 +99,7 @@ const TeacherDashboard = () => {
       .select("*") // бүх багануудыг авна
       .eq("assigned_by", user.id)
       .order("created_at", { ascending: false });
-      console.log("tasksData", user.id, tasksData);
+      // console.log("tasksData", user.id, tasksData);
     if (error) {
       console.error("Load tasks error:", error);
       return; 
@@ -125,7 +113,7 @@ const TeacherDashboard = () => {
       }));
 
       setTasks(formattedTasks);
-      console.log("Loaded tasks:", formattedTasks);
+      // console.log("Loaded tasks:", formattedTasks);
     }
   } catch (err) {
     console.error("Unexpected error in loadTasks:", err);
@@ -363,10 +351,11 @@ const assignTask = async () => {
               <div>
                 <Label>Дуусах хугацаа</Label>
                 <Input
-                  type="date"
+                  type="datetime-local"
                   value={newTaskDeadline}
                   onChange={(e) => setNewTaskDeadline(e.target.value)}
                 />
+
               </div>
 
               <Button onClick={assignTask} disabled={loading} className="w-full">
