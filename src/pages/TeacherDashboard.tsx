@@ -24,6 +24,7 @@ interface Task {
   category: string;
   completed: boolean;
   assigned_to: string;
+  student_id: string;   // 🟢 нэм
   student_name: string;
   points_reward: number;
   deadline?: string;
@@ -61,31 +62,26 @@ const TeacherDashboard = () => {
   const loadStudents = async () => {
   try {
     // student role-тай user_id-үүдийг авч ирнэ
-    const { data: rolesData, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "student");
-    if (rolesError) throw rolesError;
-    if (!rolesData || rolesData.length === 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("is_teacher", false);
+      console.log("rolesData", profilesData[0]) 
+    if (profilesError) throw profilesError;
+    if (!profilesData || profilesData.length === 0) {
       setStudents([]);
       return;
     }
 
-    const userIds = rolesData.map(r => r.user_id);
-
-    // profiles-г userIds ашиглаж татна
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, username, class_name")
-      .in("id", userIds);
-    if (profilesError) throw profilesError;
-
-    // user_stats-г авч, points-ийг нэмнэ
     const { data: statsData, error: statsError } = await supabase
       .from("user_stats")
-      .select("user_id, points")
-      .in("user_id", userIds);
+      .select("*");
+      // console.log("statsData", statsData[0]) 
     if (statsError) throw statsError;
+    if (!statsData || statsData.length === 0) {
+      setStudents([]);
+      return;
+    }
 
     const studentsWithPoints = profilesData.map(profile => ({
       id: profile.id,
@@ -104,26 +100,12 @@ const TeacherDashboard = () => {
 
   const loadTasks = async () => {
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // tasks-г авч ирнэ
     const { data: tasksData, error } = await supabase
       .from("tasks")
-      .select(`
-        id,
-        title,
-        category,
-        completed,
-        student_id,
-        points_reward,
-        deadline,
-        completed_at,
-        profiles!tasks_student_id_fkey(username)
-      `)
+      .select("*") // бүх багануудыг авна
       .eq("assigned_by", user.id)
       .order("created_at", { ascending: false });
 
@@ -133,10 +115,12 @@ const TeacherDashboard = () => {
     }
 
     if (tasksData) {
+      // student name-г students array-аас авах
       const formattedTasks = tasksData.map((task: any) => ({
         ...task,
-        student_name: task.profiles?.username || "Нэргүй",
+        student_name: students.find(s => s.id === task.assigned_to)?.username || "Нэргүй",
       }));
+
       setTasks(formattedTasks);
     }
   } catch (err) {
@@ -144,42 +128,42 @@ const TeacherDashboard = () => {
   }
 };
 
-
   const assignTask = async () => {
-    if (!selectedStudent || !newTaskTitle) {
-      toast({ title: "Алдаа", description: "Бүх талбарыг бөглөнө үү", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase.from("tasks").insert({
-
-  // teacher_id: authUser.id,
-  // student_id: studentId,
-      title: newTaskTitle,
-      category: newTaskCategory || "Ерөнхий",
-      color: "#9b87f5",
-      user_id: selectedStudent,
-      assigned_by: user.id,
-      assigned_to: selectedStudent,
-      points_reward: newTaskPoints,
-      completed: false,
+  if (!selectedStudent || !newTaskTitle) {
+    toast({
+      title: "Алдаа",
+      description: "Бүх талбарыг бөглөнө үү",
+      variant: "destructive",
     });
+    return;
+  }
 
-    if (error) {
-      toast({ title: "Алдаа", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Амжилттай!", description: "Даалгавар өгөгдлөө" });
-      setNewTaskTitle("");
-      setNewTaskCategory("");
-      setSelectedStudent("");
-      loadTasks();
-    }
-    setLoading(false);
-  };
+  setLoading(true);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase.from("tasks").insert({
+    title: newTaskTitle,
+    category: newTaskCategory || "Ерөнхий",
+    color: "#9b87f5",
+    // student_id: selectedStudent,      // ✔ зөв
+    // assigned_by: user.id,             // ✔ багш
+    points_reward: newTaskPoints,
+    completed: false,
+  });
+
+  if (error) {
+    toast({ title: "Алдаа", description: error.message, variant: "destructive" });
+  } else {
+    toast({ title: "Амжилттай!", description: "Даалгавар өгөгдлөө" });
+    setNewTaskTitle("");
+    setNewTaskCategory("");
+    setSelectedStudent("");
+    loadTasks();
+  }
+  setLoading(false);
+};
+
 
   const giveReward = async (studentId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -258,7 +242,7 @@ const TeacherDashboard = () => {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-semibold">{student.username}</p>
-                      <p className="text-sm text-muted-foreground">{student.class_name}</p>
+                      <p className="text-sm text-muted-foreground">анги : { student.class_name}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-primary">{student.points} оноо</p>
@@ -313,6 +297,7 @@ const TeacherDashboard = () => {
               <div>
                 <Label>Суралцагч сонгох</Label>
                 <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+
                   <SelectTrigger>
                     <SelectValue placeholder="Суралцагч сонгоно уу" />
                   </SelectTrigger>
@@ -331,7 +316,7 @@ const TeacherDashboard = () => {
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="Математик хичээл хийх"
-                />
+                  />
               </div>
               <div>
                 <Label>Ангилал</Label>
@@ -339,7 +324,7 @@ const TeacherDashboard = () => {
                   value={newTaskCategory}
                   onChange={(e) => setNewTaskCategory(e.target.value)}
                   placeholder="Математик"
-                />
+                  />
               </div>
               <div>
                 <Label>Оноо</Label>
@@ -348,7 +333,7 @@ const TeacherDashboard = () => {
                   value={newTaskPoints}
                   onChange={(e) => setNewTaskPoints(parseInt(e.target.value))}
                   min="1"
-                />
+                  />
               </div>
               <Button onClick={assignTask} disabled={loading} className="w-full">
                 {loading ? "Түр хүлээнэ үү..." : "Даалгавар өгөх"}
@@ -376,12 +361,12 @@ const TeacherDashboard = () => {
                     const onTime = task.completed && deadlineTs && completedAtTs ? completedAtTs <= deadlineTs : false;
                     const isLate = !task.completed && deadlineTs ? now > deadlineTs : false;
                     const badge = task.completed
-                      ? onTime
-                        ? { text: "✓ Цагтаа", cls: "bg-green-100 text-green-700" }
-                        : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
-                      : isLate
-                        ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
-                        : { text: "⏳ Хүлээгдэж", cls: "bg-yellow-100 text-yellow-700" };
+                    ? onTime
+                    ? { text: "✓ Цагтаа", cls: "bg-green-100 text-green-700" }
+                    : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
+                    : isLate
+                    ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
+                    : { text: "⏳ Хүлээгдэж", cls: "bg-yellow-100 text-yellow-700" };
                     return (
                       <div className={`px-3 py-1 rounded-full text-sm ${badge.cls}`}>
                         {badge.text}

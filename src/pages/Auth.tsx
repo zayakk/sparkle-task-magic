@@ -58,8 +58,8 @@ const Auth = () => {
           },
         }
       );
-console.log("SignUp Data:", data);
-console.log("SignUp Error:", error);
+// console.log("SignUp Data:", data);
+// console.log("SignUp Error:", error);
       if (error) throw error;
 
         if (data.user) {
@@ -70,14 +70,24 @@ console.log("SignUp Error:", error);
           user_id: data.user.id,
           role: role, // store "teacher" or "student"
         });
-
+        
+        console.log("Inserted into user_id:", data.user.id);
+        console.log("Inserted into user_roles:", role);
+        console.log("Inserted into user_class_name:", className);
         // Upsert into profiles table
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
-          display_name: displayName,
-          class_name: role === "student" ? className : null, // only for students
-          is_teacher: isTeacher, // true if teacher, false if student
-        });
+        if(role == "student"){
+          await supabase
+            .from('profiles')
+            .update({ 'class_name':  className})
+            .eq('id', data.user.id);
+        }
+        // await supabase.from("profiles").upsert({
+        //   id: data.user.id,
+        //   display_name: displayName,
+        //   class_name: role === "student" ? className : null, // only for students
+        //   is_teacher: isTeacher, // true if teacher, false if student
+        // },
+    // );
       }
 
 

@@ -34,27 +34,47 @@ const Index = () => {
   }, []);
 
   const loadTasks = async () => {
-    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
-    if (!uid) return;
+  const { data: userData } = await supabase.auth.getUser();
+  const uid = userData?.user?.id;
+  if (!uid) return;
 
-    const { data, error } = await supabase
+  // Хэрэглэгчийн role авах
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", uid)
+    .single();
+
+  if (!roleData) return;
+
+  let { data: tasksData, error } = { data: null, error: null };
+
+  console.log("loads", userData.user.user_metadata.class_name);
+  if (roleData.role === "teacher") {
+    // Багш: өөрийн өгсөн даалгаврууд
+    ({ data: tasksData, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false }));
+  } else {
+    // Сурагч: өөртөө хамаарах даалгавар
+    ({ data: tasksData, error } = await supabase
       .from("tasks")
       .select("*")
       .or(`user_id.eq.${uid},assigned_to.eq.${uid}`)
-      .order("created_at", { ascending: false });
-    if (error) {
-      // fallback: fetch separate filters in case OR filter fails due to RLS edge case
-      const [own, assigned] = await Promise.all([
-        supabase.from("tasks").select("*").eq("user_id", uid),
-        supabase.from("tasks").select("*").eq("assigned_to", uid),
-      ]);
-      const merged = [...(own.data || []), ...(assigned.data || [])]
-        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setTasks(merged);
-    } else if (data) {
-      setTasks(data);
-    }
-  };
+      .order("created_at", { ascending: false }));
+  }
+
+  if (error) {
+    console.error("Error loading tasks:", error);
+    setTasks([]);
+  } else {
+    setTasks(tasksData || []);
+  }
+};
+
+
 
   const loadUserStats = async () => {
     const uid = userId || (await supabase.auth.getUser()).data.user?.id;

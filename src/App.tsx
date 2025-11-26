@@ -76,7 +76,7 @@ const App = () => {
   }
 
   console.log("Current user:", user);
-  console.log("User role:", userRole);
+  // console.log("User role:", userRole);
 
   return (
     <QueryClientProvider client={queryClient}>
