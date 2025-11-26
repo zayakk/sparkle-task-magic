@@ -116,7 +116,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
     assigned_by: user.id,      // БАГШ
     assigned_to: user.id,   // СУРАГЧ
     user_id: user.id        // Энэ даалгавар сурагчид хамаарна
-  });
+  })
 
   if (!error) {
     toast({ title: "✨ Даалгавар нэмэгдлээ!" });
@@ -262,8 +262,6 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
 
   const teacherAssignedTasks = filteredTasks.filter(t => !t.completed && t.assigned_by && t.assigned_by !== userId);
   const personalTasks = filteredTasks.filter(t => !t.completed && (!t.assigned_by || t.assigned_by === userId));
-  const teacherAssignedTasks = filteredTasks.filter(t => !t.completed && t.assigned_by && t.assigned_by !== userId);
-  const personalTasks = filteredTasks.filter(t => !t.completed && (!t.assigned_by || t.assigned_by === userId));
   const completedTasks = filteredTasks.filter(t => t.completed);
 
   return (
@@ -306,6 +304,7 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
               </div>
               <p className="text-3xl font-bold text-secondary">{completedTasks.length}</p>
             </div>
+          </div>
           </div>
 
 
@@ -388,7 +387,6 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
                     </div>
                   ))}
                 </div>
-              )}
               )}
             </>
           )}
