@@ -255,7 +255,8 @@ const Index = () => {
     return matchesSearch && matchesCategory && matchesColor;
   });
 
-  const activeTasks = filteredTasks.filter(t => !t.completed);
+  const teacherAssignedTasks = filteredTasks.filter(t => !t.completed && t.assigned_by && t.assigned_by !== userId);
+  const personalTasks = filteredTasks.filter(t => !t.completed && (!t.assigned_by || t.assigned_by === userId));
   const completedTasks = filteredTasks.filter(t => t.completed);
 
   return (
@@ -274,13 +275,21 @@ const Index = () => {
 
         <Header points={points} level={level} />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-accent/30 animate-slide-up">
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="w-6 h-6 text-accent animate-float" />
+              <h3 className="font-bold text-lg">Багшийн даалгавар</h3>
+            </div>
+            <p className="text-3xl font-bold text-accent">{teacherAssignedTasks.length}</p>
+          </div>
+
           <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-primary/20 animate-slide-up">
             <div className="flex items-center gap-3 mb-2">
               <Target className="w-6 h-6 text-primary animate-float" />
-              <h3 className="font-bold text-lg">Идэвхтэй</h3>
+              <h3 className="font-bold text-lg">Миний даалгавар</h3>
             </div>
-            <p className="text-3xl font-bold text-primary">{activeTasks.length}</p>
+            <p className="text-3xl font-bold text-primary">{personalTasks.length}</p>
           </div>
           
           <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-secondary/20 animate-slide-up">
@@ -304,7 +313,7 @@ const Index = () => {
           colors={colors}
         />
 
-        <div className="space-y-3">
+        <div className="space-y-6">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-12 animate-slide-up">
               <p className="text-2xl mb-2">✨</p>
@@ -316,16 +325,48 @@ const Index = () => {
             </div>
           ) : (
             <>
-              {activeTasks.map((task, index) => (
-                <div key={task.id} style={{ animationDelay: `${index * 0.05}s` }}>
-                  <TaskCard task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={editTask} />
+              {teacherAssignedTasks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <div className="w-1 h-6 bg-accent rounded-full"></div>
+                    <h2 className="text-xl font-bold text-accent">Багшийн өгсөн даалгавар</h2>
+                  </div>
+                  {teacherAssignedTasks.map((task, index) => (
+                    <div key={task.id} style={{ animationDelay: `${index * 0.05}s` }} className="relative">
+                      <div className="absolute -left-2 top-0 bottom-0 w-1 bg-accent/30 rounded-full"></div>
+                      <TaskCard task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={editTask} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {completedTasks.map((task, index) => (
-                <div key={task.id} style={{ animationDelay: `${(activeTasks.length + index) * 0.05}s` }}>
-                  <TaskCard task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={editTask} />
+              )}
+
+              {personalTasks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <div className="w-1 h-6 bg-primary rounded-full"></div>
+                    <h2 className="text-xl font-bold text-primary">Миний даалгавар</h2>
+                  </div>
+                  {personalTasks.map((task, index) => (
+                    <div key={task.id} style={{ animationDelay: `${(teacherAssignedTasks.length + index) * 0.05}s` }}>
+                      <TaskCard task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={editTask} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {completedTasks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <div className="w-1 h-6 bg-secondary rounded-full"></div>
+                    <h2 className="text-xl font-bold text-secondary">Дууссан даалгавар</h2>
+                  </div>
+                  {completedTasks.map((task, index) => (
+                    <div key={task.id} style={{ animationDelay: `${(teacherAssignedTasks.length + personalTasks.length + index) * 0.05}s` }}>
+                      <TaskCard task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={editTask} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
