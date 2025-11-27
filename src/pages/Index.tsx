@@ -268,10 +268,10 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
     <div className="min-h-screen bg-gradient-subtle p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex gap-2 mb-4 justify-end">
-          <Button onClick={() => navigate("/challenges")} variant="outline">
+          {/* <Button onClick={() => navigate("/challenges")} variant="outline">
             <Zap className="w-4 h-4 mr-2" />
             Сорилтууд
-          </Button>
+          </Button> */}
           <Button onClick={handleLogout} variant="outline">
             <LogOut className="w-4 h-4 mr-2" />
             Гарах
@@ -280,7 +280,6 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
 
         <Header points={points} level={level} />
 
-        {/* ✅ 3-н карт нэг мөрөнд */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
           <div className="bg-card rounded-2xl p-6 shadow-soft border-2 border-accent/30 animate-slide-up">
