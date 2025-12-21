@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { GraduationCap, LogOut, Moon, Plus, Sun, Trophy, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client"; // Supabase client
+import { useNavigate } from "react-router-dom"; // navigation
+import { useToast } from "@/hooks/use-toast"; // toast мэдэгдэл
+import { Button } from "@/components/ui/button"; // button
+import { Card } from "@/components/ui/card"; // card
+import { Input } from "@/components/ui/input"; // input
+import { Label } from "@/components/ui/label"; // label
+import { Textarea } from "@/components/ui/textarea"; // textarea
+import { Checkbox } from "@/components/ui/checkbox"; // checkbox
+import { GraduationCap, LogOut, Moon, Plus, Sun, Trophy, Users } from "lucide-react"; // icons
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 
+// Суралцагчийн мэдээлэл
 interface Student {
   id: string;
   username: string;
@@ -19,13 +20,14 @@ interface Student {
   points: number;
 }
 
+// Даалгаврын мэдээлэл
 interface Task {
   id: string;
   title: string;
   category: string;
   completed: boolean;
   assigned_to: string;
-  student_id: string;   // 🟢 нэм
+  student_id: string;   
   student_name: string;
   points_reward: number;
   deadline?: string;
@@ -35,196 +37,211 @@ interface Task {
 const TeacherDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // State-ууд
   const [students, setStudents] = useState<Student[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [groups, setGroups] = useState<any[]>([]); // Group, group_members хамт
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState("none");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [groupStudents, setGroupStudents] = useState<string[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("");
   const [newTaskPoints, setNewTaskPoints] = useState(10);
+  const [newTaskDeadline, setNewTaskDeadline] = useState("");
   const [rewardPoints, setRewardPoints] = useState(10);
   const [rewardComment, setRewardComment] = useState("");
   const [loading, setLoading] = useState(false);
-  const [newTaskDeadline, setNewTaskDeadline] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
+  const [isDark, setIsDark] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(true); // task list нээх/хаах
+
+  // Ангилалуудын жагсаалт
   const categories = ["Бүтээлт", "Өгөгдлийн сан", "Төсөл", "Мат", "Программчлал"];
 
+  // ------------ Supabase-аас мэдээлэл авах функцууд ------------
 
-// Нэг сурагч toggle
-const toggleStudent = (id: string) => {
-  setSelectedStudents(prev =>
-    prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-  );
-};
-
-
-// Бүгдийг сонгох / арилгах
-const toggleSelectAll = () => {
-  if (selectedStudents.length === students.length) {
-    // бүгдийг арилгах
-    setSelectedStudents([]);
-  } else {
-    // бүгдийг сонгох
-    setSelectedStudents(students.map((s) => s.id));
-  }
-};
-
-const filteredStudents = students.filter((s) => {
-  const matchesClass = selectedClass === "all" || s.class_name === selectedClass;
-  const matchesSearch = s.username.toLowerCase().includes(searchTerm.toLowerCase());
-  return matchesClass && matchesSearch;
-});
-
-  useEffect(() => {
-    loadStudents();
-    loadTasks();
-    const channel = supabase
-      .channel("teacher-tasks-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
-        loadTasks();
-        loadStudents();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
+  // Суралцагчдын мэдээлэл ачааллах
   const loadStudents = async () => {
-  try {
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("is_teacher", false);
-    // console.log("profilesData", profilesData); 
-    if (profilesError) throw profilesError;
+    try {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("is_teacher", false);
+      if (profilesError) throw profilesError;
 
-    const { data: statsData, error: statsError } = await supabase
-      .from("user_stats")
-      .select("*");
+      const { data: statsData, error: statsError } = await supabase
+        .from("user_stats")
+        .select("*");
+      if (statsError) throw statsError;
 
-    // console.log("statsData", statsData); 
+      const studentsWithPoints = profilesData?.map(profile => ({
+        id: profile.id,
+        username: profile.username || "Нэргүй",
+        class_name: profile.class_name || "",
+        points: statsData?.find(s => s.user_id == profile.id)?.points || 0,
+      })) || [];
 
-    if (statsError) throw statsError;
-
-    const studentsWithPoints = profilesData?.map(profile => ({
-      id: profile.id,
-      username: profile.username || "Нэргүйй",
-      class_name: profile.class_name || "",
-      points: statsData?.find(s => s.user_id == profile.id)?.points || 0,
-    })) || [];
-
-    // console.log("Loaded students:", studentsWithPoints);
-    setStudents(studentsWithPoints);
-  } catch (err) {
-    console.error("Error loading students:", err);
-  }
-};
-
-
-  const loadTasks = async () => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: tasksData, error } = await supabase
-      .from("tasks")
-      .select("*") // бүх багануудыг авна
-      .eq("assigned_by", user.id)
-      .order("created_at", { ascending: false });
-      // console.log("tasksData", user.id, tasksData);
-    if (error) {
-      console.error("Load tasks error:", error);
-      return; 
+      setStudents(studentsWithPoints);
+    } catch (err) {
+      console.error("Error loading students:", err);
     }
+  };
 
-    if (tasksData) {
-      // student name-г students array-аас авах
-      const formattedTasks = tasksData.map((task: any) => ({
+  // Даалгавруудыг ачааллах
+  const loadTasks = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: tasksData, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("assigned_by", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) return console.error("Load tasks error:", error);
+
+      const formattedTasks = tasksData?.map((task: any) => ({
         ...task,
         student_name: students.find(s => s.id === task.assigned_to)?.username || "Нэргүй",
       }));
 
-      setTasks(formattedTasks);
-      // console.log("Loaded tasks:", formattedTasks);
+      setTasks(formattedTasks || []);
+    } catch (err) {
+      console.error("Unexpected error in loadTasks:", err);
     }
-  } catch (err) {
-    console.error("Unexpected error in loadTasks:", err);
-  }
-};
+  };
 
-const assignTask = async () => {
-  if (selectedStudents.length === 0) {
-    toast({
-      title: "Алдаа",
-      description: "Суралцагчид сонгоно уу!",
-      variant: "destructive",
-    });
-    return;
-  }
+  // Группуудыг ачааллах
+  const loadGroups = async () => {
+    const userResp = await supabase.auth.getUser();
+    const user = userResp.data?.user;
+    if (!user) return;
 
-  setLoading(true);
+    const { data: groupsData, error } = await supabase
+      .from("groups")
+      .select(`
+        id,
+        name,
+        group_members!group_members_group_id_fkey (
+          student_id,
+          profiles (
+            id,
+            username,
+            class_name
+          )
+        )
+      `)
+      .eq("teacher_id", user.id);
 
-  try {
+    if (error) return console.error("LOAD GROUPS ERROR:", error);
+
+    setGroups(groupsData || []);
+  };
+
+  // ------------ Event / Handler функцууд ------------
+
+  // Нэг сурагч сонгох/арилгах
+  const toggleStudent = (id: string) => {
+    setSelectedStudents(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  // Бүгдийг сонгох / арилгах
+  const toggleSelectAll = () => {
+    if (selectedStudents.length === students.length) setSelectedStudents([]);
+    else setSelectedStudents(students.map(s => s.id));
+  };
+
+  // Групп доторх сурагч сонгох
+  const toggleGroupStudent = (id: string) => {
+    setGroupStudents(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  // Даалгавар өгөх
+  const assignTask = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let studentIds: string[] = [];
+      if (selectedGroup !== "none") {
+        const { data: members, error } = await supabase
+          .from("group_members")
+          .select("student_id")
+          .eq("group_id", selectedGroup);
+        if (!members || members.length === 0) {
+          toast({ title: "Алдаа", description: "Энэ группт сурагч алга байна", variant: "destructive" });
+          return;
+        }
+        studentIds = members.map(m => m.student_id);
+      } else {
+        studentIds = selectedStudents;
+      }
+
+      if (!newTaskTitle.trim()) {
+        toast({ title: "Алдаа", description: "Даалгаврын нэр оруулна уу!", variant: "destructive" });
+        return;
+      }
+
+      if (studentIds.length === 0) {
+        toast({ title: "Алдаа", description: "Суралцагчид сонгоно уу!", variant: "destructive" });
+        return;
+      }
+
+      const tasksToInsert = studentIds.map(studentId => ({
+        title: newTaskTitle,
+        category: newTaskCategory,
+        points_reward: newTaskPoints,
+        assigned_to: studentId,
+        assigned_by: user.id,
+        assigned_group: selectedGroup !== "none" ? selectedGroup : null,
+        deadline: newTaskDeadline || null,
+      }));
+
+      const { error } = await supabase.from("tasks").insert(tasksToInsert);
+      if (error) throw error;
+
+      toast({ title: "Амжилттай", description: "Даалгавар амжилттай үүсгэлээ" });
+      setNewTaskTitle(""); setNewTaskCategory(""); setNewTaskPoints(10); setNewTaskDeadline("");
+      setSelectedStudents([]); setSelectedGroup("none");
+      loadTasks();
+    } catch (err) {
+      toast({ title: "Алдаа гарлаа", description: (err as any).message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  // Групп үүсгэх
+  const createGroup = async () => {
+    if (!newGroupName.trim()) return toast({ title: "Алдаа", description: "Группийн нэр оруулна уу", variant: "destructive" });
+    if (groupStudents.length === 0) return toast({ title: "Алдаа", description: "Ядаж 1 сурагч сонгоно уу", variant: "destructive" });
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Хэрэглэгч олдсонгүй");
+    if (!user) return;
 
-    // ⛔️ Хоосон UUID шалгах
-    const validStudents = selectedStudents.filter(id => id && id.trim() !== "");
+    const { data: group, error } = await supabase
+      .from("groups")
+      .insert({ name: newGroupName, teacher_id: user.id })
+      .select().single();
+    if (error) return toast({ title: "Алдаа", description: error.message, variant: "destructive" });
 
-    if (validStudents.length === 0) {
-      toast({
-        title: "Алдаа",
-        description: "Суралцагчийн ID буруу байна!",
-        variant: "destructive",
-      });
-      return;
-    }
+    const members = groupStudents.map(studentId => ({ group_id: group.id, student_id: studentId }));
+    const { error: membersError } = await supabase.from("group_members").insert(members);
+    if (membersError) return toast({ title: "Алдаа", description: membersError.message, variant: "destructive" });
 
-    // 🆕 Олон сурагчид нэг дор даалгавар үүсгэх
-    const tasksToInsert = validStudents.map(studentId => ({
-      title: newTaskTitle,
-      category: newTaskCategory,
-      points_reward: newTaskPoints,
-      assigned_to: studentId,
-      assigned_by: user.id,
-      deadline: newTaskDeadline || null,
-    }));
+    toast({ title: "Амжилттай", description: "Групп амжилттай үүслээ" });
+    setNewGroupName(""); setGroupStudents([]);
+    loadGroups();
+  };
 
-    const { error } = await supabase
-      .from("tasks")
-      .insert(tasksToInsert);
-
-    if (error) {
-      console.error("Error inserting task:", error);
-      toast({
-        title: "Алдаа гарлаа",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Амжилттай",
-      description: "Даалгавар амжилттай үүсгэлээ",
-    });
-
-    // Reset
-    setNewTaskTitle("");
-    setNewTaskCategory("");
-    setNewTaskPoints(10);
-    setNewTaskDeadline("");
-    setSelectedStudents([]); // ⬅️ Олон сурагч учир
-    loadTasks();
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
-
-
+  // Сурагчдад шагнал өгөх
   const giveReward = async (studentId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -237,41 +254,36 @@ const assignTask = async () => {
     });
 
     if (!error) {
-      const { data: stats } = await supabase
-        .from("user_stats")
-        .select("points")
-        .eq("user_id", studentId)
-        .single();
-
-      await supabase
-        .from("user_stats")
-        .update({ points: (stats?.points || 0) + rewardPoints })
-        .eq("user_id", studentId);
-
+      const { data: stats } = await supabase.from("user_stats").select("points").eq("user_id", studentId).single();
+      await supabase.from("user_stats").update({ points: (stats?.points || 0) + rewardPoints }).eq("user_id", studentId);
       toast({ title: "Шагнал өгөгдлөө!", description: `${rewardPoints} оноо нэмэгдлээ` });
-      setRewardComment("");
-      loadStudents();
+      setRewardComment(""); loadStudents();
     }
   };
-  const [isDark, setIsDark] = useState(false);
+
+  // Theme болон Logout
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    const preferDark = saved ? saved === "dark" : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (preferDark) {
-      document.documentElement.classList.add("dark");
-      setIsDark(true);
-    }
+    const preferDark = saved ? saved === "dark" : window.matchMedia?.('(prefers-color-scheme: dark)')?.matches;
+    if (preferDark) { document.documentElement.classList.add("dark"); setIsDark(true); }
   }, []);
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/auth"); };
+  const toggleTheme = () => { const next = !isDark; setIsDark(next); document.documentElement.classList.toggle("dark", next); localStorage.setItem("theme", next ? "dark" : "light"); };
+
+  // Filtered students
+  const filteredStudents = students.filter(s => (selectedClass === "all" || s.class_name === selectedClass) && s.username.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  // ------------ useEffect ------------
+
+  useEffect(() => {
+    loadStudents();
+    loadTasks();
+    loadGroups();
+    const channel = supabase.channel("teacher-tasks-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => { loadTasks(); loadStudents(); })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-4 md:p-8">
@@ -280,7 +292,11 @@ const assignTask = async () => {
           <div className="flex items-center gap-3">
             <GraduationCap className="w-8 h-8 text-white" />
             <h1 className="text-3xl font-bold text-white">Багшийн Хяналтын Самбар</h1>
+            <Button onClick={() => navigate("/report")} className="ml-auto">
+              Даалгаврын тайлан үзэх
+            </Button>
           </div>
+
           <div className="flex items-center gap-3">
           <Button size="icon" variant="secondary" onClick={toggleTheme} className="rounded-full">
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -307,7 +323,7 @@ const assignTask = async () => {
                       <p className="text-sm text-muted-foreground">анги : { student.class_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-primary">{student.points} оноо</p>
+                      {/* <p className="font-bold text-primary">{student.points} оноо</p> */}
                       <Dialog>
                         <DialogTrigger asChild>
                           {/* <Button size="sm" variant="outline" className="mt-2">
@@ -363,9 +379,9 @@ const assignTask = async () => {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Бүх анги</SelectItem>
-          <SelectItem value="A">A анги</SelectItem>
-          <SelectItem value="B">B анги</SelectItem>
-          <SelectItem value="C">C анги</SelectItem>
+          <SelectItem value="PH4">ПХ-4 анги</SelectItem>
+          <SelectItem value="1a">1a анги</SelectItem>
+          <SelectItem value="а">а анги</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -379,6 +395,39 @@ const assignTask = async () => {
       />
     </div>
   </div>
+
+{/* ----------- Group Select ----------- */}
+      <div className={`mb-4 border rounded-lg p-3 max-h-52 overflow-y-auto space-y-2 
+        ${selectedGroup !== "none" ? "opacity-50 pointer-events-none" : ""}`}
+      >
+        <Label>Групп сонгох</Label>
+
+        <Select
+          value={selectedGroup}
+          onValueChange={(value) => {
+            setSelectedGroup(value);
+            if (value !== "none") {
+              setSelectedStudents([]);
+            }
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Групп сонгох" />
+          </SelectTrigger>
+
+          <SelectContent>
+            <SelectItem value="none">— Сонгохгүй —</SelectItem>
+
+            {groups.map(g => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+ <br /> 
 
   {/* ----------- Students Checkbox List ----------- */}
   <div className="mb-4 border rounded-lg p-3 max-h-52 overflow-y-auto space-y-2">
@@ -455,47 +504,151 @@ const assignTask = async () => {
       Даалгавар өгөх
     </Button>
   </div>
-          </Card>
+  </Card>
 
 
 
         </div>
+        <Card className="p-6 mb-6">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Групп удирдлага</h2>
 
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">Өгсөн Даалгаврууд ({tasks.length})</h2>
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <Card key={task.id} className="p-4">
-                <div className="flex justify-between items-center">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Групп үүсгэх
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Шинэ групп үүсгэх</DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  {/* Group name */}
                   <div>
-                    <p className="font-semibold">{task.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {task.student_name} • {task.category} • {task.points_reward} оноо {task.deadline ? `• Дуусах: ${new Date(task.deadline).toLocaleDateString()}` : ''}
-                    </p>
+                    <Label>Группийн нэр</Label>
+                    <Input
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="Жишээ: 10A – Программчлал"
+                    />
                   </div>
-                  {(() => {
-                    const now = Date.now();
-                    const deadlineTs = task.deadline ? new Date(task.deadline).getTime() : null;
-                    const completedAtTs = task.completed_at ? new Date(task.completed_at).getTime() : null;
-                    const onTime = task.completed && deadlineTs && completedAtTs ? completedAtTs <= deadlineTs : false;
-                    const isLate = !task.completed && deadlineTs ? now > deadlineTs : false;
-                    const badge = task.completed
-                    ? onTime
-                    ? { text: "✓ Цагтаа", cls: "bg-green-100 text-green-700" }
-                    : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
-                    : isLate
-                    ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
-                    : { text: "⏳ Хүлээгдэж байна", cls: "bg-yellow-100 text-yellow-700" };
-                    return (
-                      <div className={`px-3 py-1 rounded-full text-sm ${badge.cls}`}>
-                        {badge.text}
+
+                  {/* Students */}
+                  <div className="border rounded p-3 max-h-60 overflow-y-auto space-y-2">
+                    {students.map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-center gap-2 p-1 rounded hover:bg-muted"
+                      >
+                        <Checkbox
+                          checked={groupStudents.includes(s.id)}
+                          onCheckedChange={() => toggleGroupStudent(s.id)}
+                        />
+                        <Label>
+                          {s.username} — {s.class_name}
+                        </Label>
                       </div>
-                    );
-                  })()}
+                    ))}
+                  </div>
+
+                  <Button className="w-full" onClick={createGroup}>
+                    Групп үүсгэх
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Group list */}
+          <div className="space-y-3">
+            {groups.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Одоогоор групп алга байна
+              </p>
+            )}
+
+            {groups.map((group) => (
+              <Card key={group.id} className="p-4">
+                <h3 className="font-bold text-lg mb-2">{group.name}</h3>
+
+                <div className="space-y-1">
+                  {group.group_members.map((m) => (
+                    <div
+                      key={m.student_id}
+                      className="text-sm text-muted-foreground"
+                    >
+                      • {m.profiles.username} ({m.profiles.class_name})
+                    </div>
+                  ))}
                 </div>
               </Card>
             ))}
           </div>
+        </Card>
+
+
+
+        <Card className="p-6">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">
+              Өгсөн Даалгаврууд ({tasks.length})
+            </h2>
+            {/* Toggle button */}
+            <Button 
+              size="icon" 
+              variant="outline" 
+              onClick={() => setTasksOpen(prev => !prev)}
+            >
+              {tasksOpen ? "▾" : "▸"} {/* arrow icon эсвэл text */}
+            </Button>
+          </div>
+
+          {/* Task list */}
+          {tasksOpen && (
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <Card key={task.id} className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">{task.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {task.student_name} • {task.category} • {task.points_reward} оноо
+                        {task.deadline ? ` • Дуусах: ${new Date(task.deadline).toLocaleDateString()}` : ''}
+                      </p>
+                    </div>
+                    {/* Статус */}
+                    <div>
+                      {(() => {
+                        const now = Date.now();
+                        const deadlineTs = task.deadline ? new Date(task.deadline).getTime() : null;
+                        const completedAtTs = task.completed_at ? new Date(task.completed_at).getTime() : null;
+                        const onTime = task.completed && deadlineTs && completedAtTs ? completedAtTs <= deadlineTs : false;
+                        const isLate = !task.completed && deadlineTs ? now > deadlineTs : false;
+                        const badge = task.completed
+                          ? onTime
+                            ? { text: "✓ Цагтаа", cls: "bg-green-100 text-green-700" }
+                            : { text: "✓ Хоцорсон", cls: "bg-orange-100 text-orange-700" }
+                          : isLate
+                          ? { text: "⏰ Хоцорч байна", cls: "bg-red-100 text-red-700" }
+                          : { text: "⏳ Хүлээгдэж байна", cls: "bg-yellow-100 text-yellow-700" };
+                        return (
+                          <div className={`px-3 py-1 rounded-full text-sm ${badge.cls}`}>
+                            {badge.text}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import Challenges from "./pages/Challenges";
 import NotFound from "./pages/NotFound";
+import TeacherReport from "./pages/TeacherReport";
 
 const queryClient = new QueryClient();
 
@@ -127,11 +128,11 @@ const App = () => {
 
             {/* 404 page */}
             <Route path="*" element={<NotFound />} />
+            <Route path="/report" element={<TeacherReport />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
 };
-
 export default App;

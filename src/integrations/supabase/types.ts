@@ -5,6 +5,16 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
+export interface Task {
+  id: string;
+  title: string;
+  deadline?: string | null;
+  completed: boolean;
+  assigned_by?: string | null;
+  assigned_to?: string | null;
+  user_id: string;
+}
+
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options

@@ -20,6 +20,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedColor, setSelectedColor] = useState("all");
+  
 
   useEffect(() => {
     // Prime auth session faster than getUser()
@@ -49,7 +50,6 @@ const Index = () => {
 
   let { data: tasksData, error } = { data: null, error: null };
 
-  console.log("loads", userData.user.user_metadata.class_name);
   if (roleData.role === "teacher") {
     // Багш: өөрийн өгсөн даалгаврууд
     ({ data: tasksData, error } = await supabase
@@ -84,7 +84,7 @@ const Index = () => {
       .from("user_stats")
       .select("points, level")
       .eq("user_id", uid)
-      .single();
+      .maybeSingle();
 
     if (data) {
       setPoints(data.points || 0);
@@ -188,9 +188,20 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
     loadTasks();
   };
 
-  const editTask = async (id: string, newTitle: string) => {
-    await supabase.from("tasks").update({ title: newTitle }).eq("id", id);
-    toast({ title: "✏️ Даалгавар шинэчлэгдлээ" });
+  const editTask = async (
+    id: string,
+    newTitle: string,
+    newDeadline?: string
+  ) => {
+    await supabase
+      .from("tasks")
+      .update({
+        title: newTitle,
+        deadline: newDeadline || null,
+      })
+      .eq("id", id);
+
+    toast({ title: " Даалгавар шинэчлэгдлээ ✏️" });
     loadTasks();
   };
 
@@ -251,6 +262,44 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
+  const sendTasksToTeacher = async () => {
+    if (teacherAssignedTasks.length === 0) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const fileContent = JSON.stringify(teacherAssignedTasks, null, 2);
+    const fileName = `tasks_${user.id}_${Date.now()}.json`;
+
+    const { error } = await supabase.storage
+      .from("teacher-tasks")
+      .upload(fileName, new Blob([fileContent], { type: "application/json" }));
+
+    if (error) {
+      console.error(error);
+      alert("Файл илгээхэд алдаа гарлаа");
+    } else {
+      alert("📤 Даалгаврын файл багш руу амжилттай илгээгдлээ!");
+    }
+  };
+
+
+
+  // Багийн гишүүдийг авна
+  const getTeamMembers = async (teamName: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("team", teamName);
+      
+    if (error) {
+      console.error("Team members load error:", error);
+      return [];
+    }
+    return data || [];
+  };
+
+  
   const categories = Array.from(new Set(tasks.map(task => task.category)));
   const colors = Array.from(new Set(tasks.map(task => task.color)));
   const filteredTasks = tasks.filter(task => {
@@ -335,32 +384,41 @@ const teacherTasks = tasks.filter(t => t.assigned_by && t.assigned_by !== userId
             </div>
           ) : (
             <>
-{teacherAssignedTasks.length > 0 && (
-  <div className="space-y-3">
-    <div className="flex items-center gap-2 px-2">
-      <div className="w-1 h-6 bg-accent rounded-full"></div>
-      <h2 className="text-xl font-bold text-accent">Багшийн даалгавар</h2>
-    </div>
-    
-    <div className="space-y-3">
-      {teacherAssignedTasks.map((task, index) => (
-        <div
-          key={task.id}
-          style={{ animationDelay: `${index * 0.05}s` }}
-          className="relative"
-        >
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-accent/30 rounded-full"></div>
-          <TaskCard
-            task={task}
-            onToggle={toggleTask}
-            onDelete={deleteTask}
-            onEdit={editTask}
-          />
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+              {teacherAssignedTasks.length > 0 && (
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <div className="w-1 h-6 bg-accent rounded-full"></div>
+                    <h2 className="text-xl font-bold text-accent">Багшийн даалгавар</h2>
+                  </div>
+                  
+                <button
+                        onClick={sendTasksToTeacher}
+                        className="ml-auto bg-accent text-white px-3 py-1 rounded"
+                      >
+                        Багш руу илгээх
+                      </button>
+                        
+                  <div className="space-y-3">
+                    {teacherAssignedTasks.map((task, index) => (
+                      <div
+                        key={task.id}
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                        className="relative"
+                      >
+
+                        <div className="absolute -left-2 top-0 bottom-0 w-1 bg-accent/30 rounded-full"></div>
+                        <TaskCard
+                          task={task}
+                          onToggle={toggleTask}
+                          onDelete={deleteTask}
+                          onEdit={editTask}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
 
               {personalTasks.length > 0 && (
