@@ -11,9 +11,11 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Legend,
+  Cell,
+  Pie,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, PieChart } from "lucide-react";
 
 interface TeacherTaskReport {
   teacher_id: string;
@@ -22,7 +24,21 @@ interface TeacherTaskReport {
   overdue_count: number;
   overdue_students: string[]; 
 }
+interface StudentTaskReport {
+  student_id: string;
+  student_name: string;
+  total_tasks: number;
+  completed_tasks: number;
+  overdue_tasks: number;
+}
 
+interface DeadlineReport {
+  name: string;
+  value: number;
+}
+const [teacherData, setTeacherData] = useState<TeacherTaskReport[]>([]);
+const [studentData, setStudentData] = useState<StudentTaskReport[]>([]);
+const [deadlineData, setDeadlineData] = useState<DeadlineReport[]>([]);
 const TeacherReport = () => {
     const [data, setData] = useState<TeacherTaskReport[]>([]);
     const [loading, setLoading] = useState(false);
@@ -41,6 +57,72 @@ const TeacherReport = () => {
         setData([]);
         return;
       }
+const loadDeadlineReport = async () => {
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("completed, deadline");
+
+  let completed = 0;
+  let active = 0;
+  let overdue = 0;
+
+  const now = new Date();
+
+  tasks?.forEach((t: any) => {
+    if (t.completed) completed++;
+    else if (t.deadline && new Date(t.deadline) < now) overdue++;
+    else active++;
+  });
+
+  setData([
+    { name: "Дууссан", value: completed },
+    { name: "Идэвхтэй", value: active },
+    { name: "Хоцорсон", value: overdue },
+  ]);
+};
+
+
+const loadStudentReport = async () => {
+  setLoading(true);
+  try {
+    const { data: tasks } = await supabase
+      .from("tasks")
+      .select("assigned_to, completed, deadline");
+
+    const { data: students } = await supabase
+      .from("profiles")
+      .select("id, username");
+
+    const map: Record<string, StudentTaskReport> = {};
+
+    tasks?.forEach((t: any) => {
+      const student = students?.find(s => s.id === t.assigned_to);
+      if (!student) return;
+
+      if (!map[t.assigned_to]) {
+        map[t.assigned_to] = {
+          student_id: t.assigned_to,
+          student_name: student.username,
+          total_tasks: 0,
+          completed_tasks: 0,
+          overdue_tasks: 0,
+        };
+      }
+
+      map[t.assigned_to].total_tasks += 1;
+
+      if (t.completed) {
+        map[t.assigned_to].completed_tasks += 1;
+      } else if (t.deadline && new Date(t.deadline) < new Date()) {
+        map[t.assigned_to].overdue_tasks += 1;
+      }
+    });
+
+    setData(Object.values(map));
+  } finally {
+    setLoading(false);
+  }
+};
 
       // Багшийн мэдээллийг авах
 const { data: teachers, error: teachersError } = await supabase
@@ -152,6 +234,38 @@ setData(Object.values(reportMap));
           ))}
         </>
       )}
+<ResponsiveContainer width="100%" height={400}>
+  <BarChart data={data}>
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="student_name" />
+    <YAxis allowDecimals={false} />
+    <Tooltip />
+    <Legend />
+    <Bar dataKey="total_tasks" fill="#4f46e5" name="Нийт" />
+    <Bar dataKey="completed_tasks" fill="#16a34a" name="Дууссан" />
+    <Bar dataKey="overdue_tasks" fill="#dc2626" name="Хоцорсон" />
+  </BarChart>
+</ResponsiveContainer>
+
+<ResponsiveContainer width="100%" height={350}>
+  <PieChart>
+    <Pie
+      data={data}
+      dataKey="value"
+      nameKey="name"
+      cx="50%"
+      cy="50%"
+      outerRadius={120}
+      label
+    >
+      <Cell fill="#16a34a" />
+      <Cell fill="#3b82f6" />
+      <Cell fill="#dc2626" />
+    </Pie>
+    <Tooltip />
+  </PieChart>
+</ResponsiveContainer>
+
     </div>
   );
 };

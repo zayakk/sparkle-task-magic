@@ -84,7 +84,7 @@ const Index = () => {
       .from("user_stats")
       .select("points, level")
       .eq("user_id", uid)
-      .maybeSingle();
+      .single();
 
     if (data) {
       setPoints(data.points || 0);

@@ -157,7 +157,7 @@ const TeacherDashboard = () => {
     else setSelectedStudents(students.map(s => s.id));
   };
 
-  // Групп доторх сурагч сонгох
+  // Баг доторх сурагч сонгох
   const toggleGroupStudent = (id: string) => {
     setGroupStudents(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
@@ -218,7 +218,7 @@ const TeacherDashboard = () => {
     } finally { setLoading(false); }
   };
 
-  // Групп үүсгэх
+  // Баг үүсгэх
   const createGroup = async () => {
     if (!newGroupName.trim()) return toast({ title: "Алдаа", description: "Группийн нэр оруулна уу", variant: "destructive" });
     if (groupStudents.length === 0) return toast({ title: "Алдаа", description: "Ядаж 1 сурагч сонгоно уу", variant: "destructive" });
@@ -236,7 +236,7 @@ const TeacherDashboard = () => {
     const { error: membersError } = await supabase.from("group_members").insert(members);
     if (membersError) return toast({ title: "Алдаа", description: membersError.message, variant: "destructive" });
 
-    toast({ title: "Амжилттай", description: "Групп амжилттай үүслээ" });
+    toast({ title: "Амжилттай", description: "Баг амжилттай үүслээ" });
     setNewGroupName(""); setGroupStudents([]);
     loadGroups();
   };
@@ -400,7 +400,7 @@ const TeacherDashboard = () => {
       <div className={`mb-4 border rounded-lg p-3 max-h-52 overflow-y-auto space-y-2 
         ${selectedGroup !== "none" ? "opacity-50 pointer-events-none" : ""}`}
       >
-        <Label>Групп сонгох</Label>
+        <Label>Баг сонгох</Label>
 
         <Select
           value={selectedGroup}
@@ -412,7 +412,7 @@ const TeacherDashboard = () => {
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Групп сонгох" />
+            <SelectValue placeholder="Баг сонгох" />
           </SelectTrigger>
 
           <SelectContent>
@@ -512,19 +512,19 @@ const TeacherDashboard = () => {
         <Card className="p-6 mb-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Групп удирдлага</h2>
+            <h2 className="text-xl font-bold">Үүсгэсэн багууд</h2>
 
             <Dialog>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
-                  Групп үүсгэх
+                  Баг үүсгэх
                 </Button>
               </DialogTrigger>
 
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Шинэ групп үүсгэх</DialogTitle>
+                  <DialogTitle>Шинэ баг үүсгэх</DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
@@ -557,7 +557,7 @@ const TeacherDashboard = () => {
                   </div>
 
                   <Button className="w-full" onClick={createGroup}>
-                    Групп үүсгэх
+                    x үүсгэх
                   </Button>
                 </div>
               </DialogContent>
@@ -568,7 +568,7 @@ const TeacherDashboard = () => {
           <div className="space-y-3">
             {groups.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Одоогоор групп алга байна
+                Одоогоор баг алга байна
               </p>
             )}
 
